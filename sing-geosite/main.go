@@ -260,6 +260,15 @@ func generate(release *github.RepositoryRelease, output string, cnOutput string,
 }
 
 func setActionOutput(name string, content string) {
+	githubOutput := os.Getenv("GITHUB_OUTPUT")
+	if githubOutput != "" {
+		f, err := os.OpenFile(githubOutput, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+		if err == nil {
+			defer f.Close()
+			f.WriteString(name + "=" + content + "\n")
+			return
+		}
+	}
 	os.Stdout.WriteString("::set-output name=" + name + "::" + content + "\n")
 }
 
@@ -287,9 +296,13 @@ func release(source string, destination string, output string, cnOutput string, 
 }
 
 func main() {
+	destination := os.Getenv("GITHUB_REPOSITORY")
+	if destination == "" {
+		destination = "lyc8503/sing-geosite"
+	}
 	err := release(
 		"Loyalsoldier/v2ray-rules-dat",
-		"lyc8503/sing-geosite",
+		destination,
 		"geosite.db",
 		"geosite-cn.db",
 		"rule-set",

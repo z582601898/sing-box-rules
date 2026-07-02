@@ -263,11 +263,24 @@ func release(source string, destination string, output string, ruleSetOutput str
 }
 
 func setActionOutput(name string, content string) {
+	githubOutput := os.Getenv("GITHUB_OUTPUT")
+	if githubOutput != "" {
+		f, err := os.OpenFile(githubOutput, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+		if err == nil {
+			defer f.Close()
+			f.WriteString(name + "=" + content + "\n")
+			return
+		}
+	}
 	os.Stdout.WriteString("::set-output name=" + name + "::" + content + "\n")
 }
 
 func main() {
-	err := release("Loyalsoldier/geoip", "lyc8503/sing-geoip", "geoip.db", "rule-set")
+	destination := os.Getenv("GITHUB_REPOSITORY")
+	if destination == "" {
+		destination = "lyc8503/sing-geoip"
+	}
+	err := release("Loyalsoldier/geoip", destination, "geoip.db", "rule-set")
 	if err != nil {
 		log.Fatal(err)
 	}

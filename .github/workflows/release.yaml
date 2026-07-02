@@ -13,14 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
           
       - name: Setup Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.19.5"
+          go-version: "1.21"
       
       - name: Build geosite
         id: build_site
@@ -35,16 +35,8 @@ jobs:
           go run -v .
       
       - name: Release rule sets
-        if: steps.build.outputs.skip != 'true'
+        if: steps.build_site.outputs.skip != 'true' || steps.build_ip.outputs.skip != 'true'
         run: .github/release-rule-set.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Delete old releases
-        uses: dev-drprasad/delete-older-releases@v0.3.4
-        with:
-          keep_latest: 5
-          delete_tags: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -52,43 +44,17 @@ jobs:
         id: time
         run: echo "time=$(date +'%Y%m%d%H%M%S')" >> $GITHUB_OUTPUT
       
-      - name: Create a release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create and Upload Release Assets
+        if: steps.build_site.outputs.skip != 'true' || steps.build_ip.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.time.outputs.time }}
-          release_name: ${{ steps.time.outputs.time }}
+          name: Release ${{ steps.time.outputs.time }}
           draft: false
           prerelease: false
-      
-      - name: Release geosite.db
-        uses: actions/upload-release-asset@v1
+          files: |
+            ./sing-geosite/geosite.db
+            ./sing-geoip/geoip.db
+            ./sing-geoip/geoip-cn.db
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./sing-geosite/geosite.db
-          asset_name: geosite.db
-          asset_content_type: application/octet-stream
-      
-      - name: Release geoip.db
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./sing-geoip/geoip.db
-          asset_name: geoip.db
-          asset_content_type: application/octet-stream
-      
-      - name: Release geoip-cn.db
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./sing-geoip/geoip-cn.db
-          asset_name: geoip-cn.db
-          asset_content_type: application/octet-stream
